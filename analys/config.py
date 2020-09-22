@@ -22,4 +22,6 @@ Cfg.w2vec_alpha = 0.03
 Cfg.w2vec_min_alpha = 0.0007
 Cfg.w2vec_window = 5
 Cfg.w2vec_epochs = 30
+Cfg.w2vec_bags_min_df = 1
+Cfg.w2vec_bags_ngram_range = (1, 1)
 Cfg.w2vec_averager = 'mean' # ['mean', 'tf_idf']

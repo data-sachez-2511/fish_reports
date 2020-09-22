@@ -69,7 +69,7 @@ class MyWord2Vec():
                                    window=cfg.w2vec_window)
         self.averager = cfg.w2vec_averager
         if self.averager == 'tf_idf':
-            self.tf_idf = TfidfVectorizer()
+            self.tf_idf = TfidfVectorizer(min_df=cfg.w2vec_bags_min_df, ngram_range=cfg.w2vec_bags_ngram_range)
 
     def save(self):
         self.vectorizer.save(cfg.vectorizer_path)
