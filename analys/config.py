@@ -7,11 +7,12 @@ Cfg.vectorizer_path = '/analys/vect.pkl'
 Cfg.batch_size = 32
 
 # ------------Bags of the words-----------------------
-Cfg.bags_min_df = 1
-Cfg.bags_ngram_range = (1, 1)
+Cfg.tf_idf_min_df = 1
+Cfg.tf_idf_ngram_range = (1, 1)
 
 # ------------Tf-Idf-----------------------
-
+Cfg.bags_min_df = 1
+Cfg.bags_ngram_range = (1, 1)
 
 # ------------Word2Vec-----------------------
 
