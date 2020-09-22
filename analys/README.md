@@ -1,8 +1,25 @@
 # TODO
 
-class TextHandler(object):
-'''??"'
+- [ ] Рефакторинг кода text_vectorizer
+- [ ] Доделать Tf-Idf
+- [ ] Добавить возвожность усреднять вектора по предложению с помощью
+Tf-Idf или Bag of the words
 
-def handle(self, features):
-features = {'text': ..., 'fish tool': ..., 'place': ...}
- return vector()
+- [ ] Написать TextFilter
+1. Удаляет стоп слова (если на вход пустой список стоп слов, то ничего не удаляет)
+2. Отделяет пунктуацию от слов (привет, пока -> привет , пока)
+3. Добавить возможность удалить пунктуацию
+4. Добавить lowercase
+
+- [ ] Написать Lemmatizator (https://github.com/nlpub/pymystem3)
+- [ ] Написать Stemmer (https://pypi.org/project/snowballstemmer/)
+- [ ] Написать FeatureGenerator (генерирует фичи из текста)
+
+- [ ] Провести аналитику:
+1. Самые высокочастотные слова и низкочастотные
+2. Средняя (максимальная, минимальная) длина предложений
+3. Подсчитать частоты пунктуаций (каждой) для прогнозов/не прогнозов
+4. Подсчитать частоты выражений вида "%d.%d" (3.700, 1.200) для прогнозов/не прогнозов
+5. Погенерировать фичи самостоятельно
+
+TextFilter(без удаления) -> FeatureGenerator -> TextFilter(с удалениями, чисткой) -> Lemmatizator/Stemmer -> Vectorizer -> FeatureExactor -> Train\Test 
