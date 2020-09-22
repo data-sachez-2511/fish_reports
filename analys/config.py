@@ -25,3 +25,6 @@ Cfg.w2vec_epochs = 30
 Cfg.w2vec_bags_min_df = 1
 Cfg.w2vec_bags_ngram_range = (1, 1)
 Cfg.w2vec_averager = 'mean' # ['mean', 'tf_idf']
+
+# ------------TextFilter-----------------------
+

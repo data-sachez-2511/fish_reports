@@ -95,7 +95,6 @@ class MyWord2Vec():
         vectors_batch = []
         if self.averager == 'mean':
             vectors_batch = [[self.vectorizer.wv[word] for word in sentence] for sentence in words_batch]
-            vectors_batch = [np.mean(sentence) for sentence in vectors_batch]
         elif self.averager == 'tf_idf':
             batch_index = self.tf_idf.fit_transform(batch).toarray()
             words = [self.tf_idf.get_feature_names()]
@@ -104,4 +103,7 @@ class MyWord2Vec():
                 for word in words_batch[i]:
                     if word in words:
                         vectors_batch[i] = batch_index[i][words.index(word)] * self.vectorizer.wv[word]
+                    else:
+                        vectors_batch[i] = 0
+        vectors_batch = [np.mean(sentence) for sentence in vectors_batch]
         return vectors_batch
