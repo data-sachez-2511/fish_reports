@@ -1,4 +1,5 @@
 from easydict import EasyDict
+from nltk.corpus import stopwords
 
 Cfg = EasyDict()
 
@@ -27,4 +28,5 @@ Cfg.w2vec_bags_ngram_range = (1, 1)
 Cfg.w2vec_averager = 'mean' # ['mean', 'tf_idf']
 
 # ------------TextFilter-----------------------
-
+Cfg.filt_stopwords = stopwords.words('russian')
+Cfg.filt_form = ' {} '

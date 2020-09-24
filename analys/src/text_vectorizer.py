@@ -4,7 +4,7 @@ from nltk.corpus import stopwords
 import joblib
 import numpy as np
 
-from ..config import Cfg as cfg
+from analys.config import Cfg as cfg
 
 
 class BagsOfTheWords():
