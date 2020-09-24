@@ -1,5 +1,10 @@
 import copy
+from pymystem3 import Mystem
+from nltk.stem.snowball import SnowballStemmer
+
+
 from analys.config import Cfg as cfg
+
 
 class TextFilter():
     def __init__(self, batch, stopwords=cfg.filt_stopwords):
@@ -71,5 +76,20 @@ class TextFilter():
         return filter.batch
 
 
-#filt = TextFilter(['Я иду гулять!', 'Да, я,  тоже?'])
-#print(filt.classic_filter())
+def lemma(batch):
+    m = Mystem()
+    text = []
+    for sentense in batch:
+        sentense = m.lemmatize(sentense)
+        sentense.pop(-1)
+        text.append(''.join(sentense))
+    return text
+
+
+def stemmer(batch):
+    stem = SnowballStemmer('russian')
+    text = []
+    for sent in batch:
+        sent = stem.stem(sent)
+        text.append(sent)
+    return text
