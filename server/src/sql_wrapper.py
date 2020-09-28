@@ -106,7 +106,7 @@ class SqlWrapper(object):
         self.conn.commit()
 
     def __enter__(self):
-        return self.curs
+        return self
 
     def __exit__(self):
         self.conn.close()
