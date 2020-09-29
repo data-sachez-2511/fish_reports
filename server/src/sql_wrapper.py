@@ -35,7 +35,7 @@ class SqlWrapper(object):
                 raise IndexError
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
-            return self.curs.execute(f'SELECT * FROM {self.table} WHERE {self.pk} = {idx + 1}').fetchone()
+            return self.curs.execute(f'SELECT * FROM {self.table} WHERE {self.pk} = {idx}').fetchone()
         elif isinstance(idx, slice):
             start = idx.start
             stop = idx.stop
@@ -52,7 +52,7 @@ class SqlWrapper(object):
             if start >= stop:
                 return []
             return self.curs.execute(
-                f'SELECT * FROM {self.table} WHERE {self.pk} BETWEEN {start + 1} AND {stop}'
+                f'SELECT * FROM {self.table} WHERE {self.pk} BETWEEN {start} AND {stop - 1}'
             ).fetchall()[0:self.__len__():idx.step]
         else:
             raise TypeError
@@ -73,7 +73,7 @@ class SqlWrapper(object):
                 if -self.__len__() <= idx < 0:
                     idx += self.__len__()
                 self.curs.execute(
-                    f'UPDATE {self.table} SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE {self.pk} = {idx + 1}', [list(row.values())[i] for i in range(len(row))])
+                    f'UPDATE {self.table} SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE {self.pk} = {idx}', [list(row.values())[i] for i in range(len(row))])
                 self.conn.commit()
             else:
                 raise TypeError
@@ -89,23 +89,23 @@ class SqlWrapper(object):
             raise ValueError
         if self.__len__() == 0:
             return
+        start = 0
+        stop = self.__len__() - 1
+        step = 1
         if isinstance(idx, int):
             if idx >= self.__len__() or idx < -self.__len__():
                 raise IndexError
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
-            self.curs.execute(f'DELETE FROM {self.table} WHERE {self.pk} = {idx + 1}')
+            self.curs.execute(f'DELETE FROM {self.table} WHERE {self.pk} = {idx}')
             self.conn.commit()
         elif isinstance(idx, slice):
-            start = idx.start
-            stop = idx.stop
-            step = idx.step
-            if start is None:
-                start = 0
-            if stop is None:
-                stop = self.__len__()
-            if step is None:
-                step = 1
+            if idx.start is not None:
+                start = idx.start
+            if idx.stop is not None:
+                stop = idx.stop
+            if idx.step is not None:
+                step = idx.step
             if start >= self.__len__():
                 return []
             if start < 0:
@@ -115,14 +115,14 @@ class SqlWrapper(object):
             if start >= stop:
                 return []
             self.curs.execute(
-                f'DELETE FROM {self.table} WHERE {self.pk} BETWEEN {start + 1} AND {stop} AND {self.pk} % {step} = 1')
+                f'DELETE FROM {self.table} WHERE {self.pk} BETWEEN {start} AND {stop - 1} AND {self.pk} % {step} = {start % step}')
             self.conn.commit()
         else:
             raise TypeError
         ids = [list(row) for row in self.curs.execute(
-            f'SELECT {self.pk} FROM {self.table} WHERE {self.pk} > {start}').fetchall()]
+            f'SELECT {self.pk} FROM {self.table} WHERE {self.pk} > {start - 1}').fetchall()]
         for i in enumerate(ids):
-            ids[i[0]].append(i[0] + 1)
+            ids[i[0]].append(i[0] + start)
         ids = [[id2, id1] for id1, id2 in ids]
         self.curs.executemany(f'UPDATE {self.table} SET {self.pk} = ? WHERE {self.pk} = ?', ids)
         self.conn.commit()
@@ -153,7 +153,7 @@ class SqlWrapper(object):
         if isinstance(row, dict):
             if self.pk in list(row):
                 del row[self.pk]
-            row.update({self.pk: self.__len__() + 1})
+            row.update({self.pk: self.__len__()})
             self.curs.execute(
                 f'INSERT INTO {self.table} ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?" for i in range(len(row))])})', [list(row.values())[i] for i in range(len(row))])
             self.conn.commit()
