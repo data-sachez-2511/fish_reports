@@ -77,13 +77,15 @@ class MyWord2Vec():
     def load(self):
         self.vectorizer = Word2Vec.load(cfg.vectorizer_path)
 
+    def build_vocab(self, vocab):
+        self.vectorizer.build_vocab(vocab)
+
     def fit(self, batch):
         '''
         :param batch: list of strings size of N - batch size
         :return: None
         '''
-        words_batch = [_.split(' ') for _ in batch]
-        self.vectorizer.build_vocab(words_batch)
+        words_batch = [_[0].split(' ') for _ in batch]
         self.vectorizer.train(words_batch, total_examples=(len(batch)), epochs=cfg.w2vec_epochs)
 
     def transform(self, batch):
@@ -91,7 +93,7 @@ class MyWord2Vec():
         :param batch: list of strings size of N - batch size
         :return: numpy array size of [N x vocab_size]
         '''
-        words_batch = [_.split(' ') for _ in batch]
+        words_batch = [_[0].split(' ') for _ in batch]
         vectors_batch = []
         if self.averager == 'mean':
             vectors_batch = [[self.vectorizer.wv[word] for word in sentence] for sentence in words_batch]
@@ -105,5 +107,5 @@ class MyWord2Vec():
                         vectors_batch[i] = batch_index[i][words.index(word)] * self.vectorizer.wv[word]
                     else:
                         vectors_batch[i] = 0
-        vectors_batch = [np.mean(sentence) for sentence in vectors_batch]
+        vectors_batch = [[np.mean(sentence)] for sentence in vectors_batch]
         return vectors_batch
