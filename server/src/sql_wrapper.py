@@ -1,4 +1,5 @@
 import sqlite3
+from collections.abc import Iterable
 
 
 class SqlWrapper(object):
@@ -16,8 +17,12 @@ class SqlWrapper(object):
         self.conn.close()
 
     def __len__(self):
-        """Return table row count."""
+        """Return table row count.
 
+            Raises ValueError if self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
         self.curs.execute(f'SELECT COUNT({self.pk}) FROM {self.table}')
         return self.curs.fetchone()[0]
 
@@ -157,5 +162,80 @@ class SqlWrapper(object):
             self.curs.execute(
                 f'INSERT INTO {self.table} ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?" for i in range(len(row))])})', [list(row.values())[i] for i in range(len(row))])
             self.conn.commit()
+        else:
+            raise TypeError
+
+    def extend(self, rows):
+        """Insert rows into table.
+
+            Raises TypeError if rows is not an iterable, ValueError if self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
+        if not isinstance(rows, Iterable):
+            raise TypeError
+        rows = list(rows)
+        for row in rows:
+            if not isinstance(row, dict):
+                raise TypeError
+            self.append(row)
+
+    def pop(self, idx=-1):
+        """Remove and return row at index (default last).
+
+            Raises TypeError if index is not an integer, ValueError if self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
+        if isinstance(idx, int):
+            row = self.__getitem__(idx)
+            self.__delitem__(idx)
+            return row
+        else:
+            raise TypeError
+
+    def remove(self, row):
+        """Remove first occurrence of row.
+
+            Raises TypeError if row is not a dictionary, ValueError if the row is not present, if self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
+        if isinstance(row, dict):
+            if self.pk in list(row):
+                del row[self.pk]
+            index = self.curs.execute(f'SELECT {self.pk} FROM {self.table} WHERE {" AND ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} ORDER BY {self.pk} ASC LIMIT 1', [list(row.values())[i] for i in range(len(row))]).fetchone()
+            if index:
+                index = index[0]
+            else:
+                raise ValueError
+            self.curs.execute(f'DELETE FROM {self.table} WHERE {self.pk} = {index}')
+            self.curs.execute(f'UPDATE {self.table} SET {self.pk} = {self.pk} - 1 WHERE {self.pk} > {index}')
+            self.conn.commit()
+        else:
+            raise TypeError
+
+    def index(self, row, start=0, stop=9223372036854775807):
+        """Return first index of row.
+
+            Raises TypeError if row is not a dictionary, start or stop are not integers, ValueError if self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
+        if isinstance(start, int):
+            if isinstance(stop, int):
+                if isinstance(row, dict):
+                    if self.pk in list(row):
+                        del row[self.pk]
+                    index = self.curs.execute(
+                        f'SELECT {self.pk} FROM {self.table} WHERE {" AND ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} AND {self.pk} BETWEEN {start} AND {stop - 1} LIMIT 1', [list(row.values())[i] for i in range(len(row))]).fetchone()
+                    if index:
+                        return index[0]
+                    else:
+                        raise ValueError
+                else:
+                    raise TypeError
+            else:
+                raise TypeError
         else:
             raise TypeError
