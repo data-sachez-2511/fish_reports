@@ -23,7 +23,7 @@ for entry in zip(list(data['date'].values()), list(data['is_report'].values()), 
     text = entry[4]
     emoticons = 0
     while True:
-        match = re.search('(<\s*(\/)?\s*[^\s<>"]+(?(1)|( [^\s<>"]+(="[^"]*")?)*)\s*>)|((\:\s?\w+\s?\:|\<[\/\\]?3|[\(\)\\\Dd|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DdOoPp\@\$\*\\\)\(\/\|])(?=\s|[\!\.\?]|$))', text)
+        match = re.search('(<\s*(\/)?\s*[^\s<>"=\/]+(?(2)|(\s+[a-z_-]+(\s*=\s*"[^"]*")?)*)\s*>)|((\s*:\s?[^\Wа-я]+\s?:)|(\:\s?\w+\s?\:|\<[\/\\]?3|[\(\)\\\Dd|\*\$][\-\^]?[\:\;\=]|[\:\;\=B8][\-\^]?[3DdOoPp\@\$\*\\\)\(\/\|])(?=\s|[\!\.\?]|$))', text)
         if match is not None:
             text = text.replace(match.group(0), '', 1)
             if match.group(5):
