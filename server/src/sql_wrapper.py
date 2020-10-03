@@ -239,3 +239,24 @@ class SqlWrapper(object):
                 raise TypeError
         else:
             raise TypeError
+
+    def add_column(self, column_name, datatype, not_null=False, default=None):
+        """Add column with name specified name, datatype and constraints 'NOT NULL' and 'DEFAULT'.
+
+        Raises ValueError if datatype is not 'NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB' or 'NUMERIC' or self.table or self.pk is None."""
+
+        if self.table is None or self.pk is None:
+            raise ValueError
+        if datatype.upper() in ('NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB', 'NUMERIC'):
+            if isinstance(default, str):
+                default = '"' + default + '"'
+            elif default is True:
+                default = 1
+            elif default is False:
+                default = 0
+            elif default is None:
+                default = 'NULL'
+            self.curs.execute(f'ALTER TABLE {self.table} ADD {column_name} {datatype}{" NOT NULL" * not_null} DEFAULT {default}')
+            self.conn.commit()
+        else:
+            raise ValueError
