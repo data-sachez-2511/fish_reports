@@ -1,5 +1,4 @@
 import sqlite3
-import time
 from collections.abc import Iterable
 
 
@@ -13,7 +12,7 @@ class SqlWrapper(object):
         self.pk = None
 
     def __del__(self):
-        """Commit changes and close database connection on object deletion."""
+        """Commit changes and close database connection on object destruction."""
 
         self.conn.commit()
         self.conn.close()
