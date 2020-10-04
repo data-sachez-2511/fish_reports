@@ -1,4 +1,5 @@
 import sqlite3
+import time
 from collections.abc import Iterable
 
 
@@ -12,8 +13,9 @@ class SqlWrapper(object):
         self.pk = None
 
     def __del__(self):
-        """Close database connection on object deletion."""
+        """Commit changes and close database connection on object deletion."""
 
+        self.conn.commit()
         self.conn.close()
 
     def __len__(self):
@@ -86,7 +88,6 @@ class SqlWrapper(object):
                 row = res_row
                 self.curs.execute(
                     f'UPDATE "{self.table}" SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE "{self.pk}" = {idx}', [i for i in row.values()])
-                self.conn.commit()
             else:
                 raise TypeError
         else:
@@ -110,7 +111,6 @@ class SqlWrapper(object):
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
             self.curs.execute(f'DELETE FROM "{self.table}" WHERE "{self.pk}" = {idx}')
-            self.conn.commit()
         elif isinstance(idx, slice):
             if idx.start is not None:
                 start = idx.start
@@ -128,7 +128,6 @@ class SqlWrapper(object):
                 return []
             self.curs.execute(
                 f'DELETE FROM "{self.table}" WHERE "{self.pk}" BETWEEN {start} AND {stop - 1} AND "{self.pk}" % {step} = {start % step}')
-            self.conn.commit()
         else:
             raise TypeError
         ids = [list(row) for row in self.curs.execute(
@@ -137,7 +136,6 @@ class SqlWrapper(object):
             ids[i[0]].append(i[0] + start)
         ids = [[id2, id1] for id1, id2 in ids]
         self.curs.executemany(f'UPDATE "{self.table}" SET "{self.pk}" = ? WHERE "{self.pk}" = ?', ids)
-        self.conn.commit()
 
     def __enter__(self):
         """Return self if used in 'with ... as' statement."""
@@ -145,9 +143,15 @@ class SqlWrapper(object):
         return self
 
     def __exit__(self):
-        """Close database connection when exiting 'with ... as' statement."""
+        """Commit changes and close database connection when exiting 'with ... as' statement."""
 
+        self.conn.commit()
         self.conn.close()
+
+    def commit(self):
+        """Commit changes."""
+
+        self.conn.commit()
 
     def set_table(self, table_name, pk):
         """Set table and primary key."""
@@ -172,7 +176,6 @@ class SqlWrapper(object):
             row = res_row
             self.curs.execute(
                 f'INSERT INTO "{self.table}" ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?"] * len(row))})', [i for i in row.values()])
-            self.conn.commit()
         else:
             raise TypeError
 
@@ -226,7 +229,6 @@ class SqlWrapper(object):
                 raise ValueError
             self.curs.execute(f'DELETE FROM "{self.table}" WHERE "{self.pk}" = {index}')
             self.curs.execute(f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - 1 WHERE "{self.pk}" > {index}')
-            self.conn.commit()
         else:
             raise TypeError
 
@@ -278,6 +280,5 @@ class SqlWrapper(object):
             elif not isinstance(default, int) and not isinstance(default, float):
                 raise ValueError
             self.curs.execute(f'ALTER TABLE "{self.table}" ADD "{column_name}" {datatype}{" NOT NULL" * not_null} DEFAULT {default}')
-            self.conn.commit()
         else:
             raise ValueError
