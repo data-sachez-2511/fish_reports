@@ -3,13 +3,23 @@ from collections.abc import Iterable
 
 
 class SqlWrapper(object):
-    """Interface for sqlite databases similar to built-in list."""
+    """API for sqlite databases similar to built-in list.
+    This API is NOT suitable for multi-threading.
+    Using it with multi-threading may lead to errors and data loss, use that way at your own risk."""
 
-    def __init__(self, filename):
+    def __init__(self, filename, store_len):
+        """Initialize self.
+
+            Setting store_len to True switches API to 'fast mode', meaning row count is fetched only on set_table() call.
+            Setting store_len to False switches API to 'multi-instance mode', meaning that row count is fetched on every __len__() call:
+            it is slower, but suited to work with several instances connected to the same DB at a time."""
+
         self.conn = sqlite3.connect(filename)
         self.curs = self.conn.cursor()
         self.table = None
         self.pk = None
+        self.store_len = store_len
+        self.len = 0
 
     def __del__(self):
         """Commit changes and close database connection on object destruction."""
@@ -24,13 +34,17 @@ class SqlWrapper(object):
 
         if self.table is None or self.pk is None:
             raise ValueError
-        self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"')
-        return self.curs.fetchone()[0]
+        if self.store_len:
+            return self.len
+        else:
+            return self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
     def __getitem__(self, idx):
         """Return tuple or list of tuples containing row data from the table, by index or slice.
 
-            Raises IndexError if idx is out of range, TypeError if idx is not integer, slice or iterable, ValueError if self.table or self.pk is None."""
+            Raises IndexError if idx is out of range,
+            TypeError if idx is not integer, slice or iterable,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -69,7 +83,8 @@ class SqlWrapper(object):
     def __setitem__(self, idx, row):
         """Update table row to passed dictionary by index.
 
-            Raises TypeError if idx is not an integer or row is not a dictionary, ValueError if self.table or self.pk is None."""
+            Raises TypeError if idx is not an integer or row is not a dictionary,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -95,7 +110,8 @@ class SqlWrapper(object):
     def __delitem__(self, idx):
         """Delete table row(s) by index or slice.
 
-            Raises IndexError if index idx is out of range, ValueError if self.table or self.pk is None."""
+            Raises IndexError if idx is out of range,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -135,6 +151,7 @@ class SqlWrapper(object):
             ids[i[0]].append(i[0] + start)
         ids = [[id2, id1] for id1, id2 in ids]
         self.curs.executemany(f'UPDATE "{self.table}" SET "{self.pk}" = ? WHERE "{self.pk}" = ?', ids)
+        self.len = self.curs.rowcount
 
     def __enter__(self):
         """Return self if used in 'with ... as' statement."""
@@ -153,15 +170,18 @@ class SqlWrapper(object):
         self.conn.commit()
 
     def set_table(self, table_name, pk):
-        """Set table and primary key."""
+        """Set table and primary key. Set self.len if in 'fast mode'."""
 
         self.table = table_name
         self.pk = pk
+        if self.store_len:
+            self.len = self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
     def append(self, row):
         """Insert row into table.
 
-            Raises TypeError if row is not a dictionary, ValueError if self.table or self.pk is None."""
+            Raises TypeError if row is not a dictionary,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -177,11 +197,13 @@ class SqlWrapper(object):
                 f'INSERT INTO "{self.table}" ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?"] * len(row))})', [i for i in row.values()])
         else:
             raise TypeError
+        self.len += 1
 
     def extend(self, rows):
         """Insert rows into table.
 
-            Raises TypeError if rows is not an iterable, ValueError if self.table or self.pk is None."""
+            Raises TypeError if rows is not an iterable,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -196,7 +218,8 @@ class SqlWrapper(object):
     def pop(self, idx=-1):
         """Remove and return row at index (default last).
 
-            Raises TypeError if index is not an integer, ValueError if self.table or self.pk is None."""
+            Raises TypeError if idx is not an integer,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -206,11 +229,13 @@ class SqlWrapper(object):
             return row
         else:
             raise TypeError
+        self.len -= 1
 
     def remove(self, row):
         """Remove first occurrence of row.
 
-            Raises TypeError if row is not a dictionary, ValueError if the row is not present, if self.table or self.pk is None."""
+            Raises TypeError if row is not a dictionary,
+            ValueError if row is not present, if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -230,11 +255,13 @@ class SqlWrapper(object):
             self.curs.execute(f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - 1 WHERE "{self.pk}" > {index}')
         else:
             raise TypeError
+        self.len -= 1
 
     def index(self, row, start=0, stop=9223372036854775807):
-        """Return first index of row.
+        """Return index of the first occurrence of row.
 
-            Raises TypeError if row is not a dictionary, start or stop are not integers, ValueError if self.table or self.pk is None."""
+            Raises TypeError if row is not a dictionary, start or stop are not integers,
+            ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
@@ -261,9 +288,10 @@ class SqlWrapper(object):
             raise TypeError
 
     def add_column(self, column_name, datatype, not_null=False, default=None):
-        """Add column with name specified name, datatype and constraints 'NOT NULL' and 'DEFAULT'.
+        """Add column with specified name, datatype and constraints 'NOT NULL' and 'DEFAULT'.
 
-        Raises ValueError if datatype is not 'NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB' or 'NUMERIC', if default isn't string True, False, None or number, if self.table or self.pk is None."""
+        Raises ValueError if datatype is not 'NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB' or 'NUMERIC',
+        if default isn't string True, False, None or number, if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None or (not_null and default is None):
             raise ValueError
