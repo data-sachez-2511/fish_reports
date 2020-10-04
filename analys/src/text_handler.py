@@ -6,17 +6,16 @@ import re
 import numpy as np
 import time
 
-
-
 from analys.config import Cfg as cfg
 
 
 class TextFilter():
-    def __init__(self, batch, stopwords=cfg.filt_stopwords):
+    def __init__(self, batch, stopwords=cfg.filt_stopwords, signs=cfg.gen_signs, features=cfg.features, digit=cfg.gen_numbers):
         self.stop_list = stopwords
         self.batch = batch
-        self.signs = cfg.gen_signs
-        self.features = cfg.features
+        self.signs = signs
+        self.features = features
+        self.digit = digit
 
     def lower(self):
         '''
@@ -72,38 +71,34 @@ class TextFilter():
         new_text = [' '.join([i for i in sentense.split(' ') if i not in self.stop_list]) for sentense in self.batch]
         return new_text
 
-    def del2spaces(self, sentense):
-        pre_text = sentense
+    def del2spaces(self, sentence):
+        pre_text = sentence
         while pre_text != pre_text.replace('  ', ' '):
             pre_text = pre_text.replace('  ', ' ')
-        sentense = pre_text
-        return sentense
+        sentence = pre_text
+        return sentence
 
     def classic_filter(self):
         '''
         :param batch: None
         :return: batch with full processing
         '''
-        print('start')
-        new_text = [i[0] for i in self.batch]
-        features = [[0 for i in range(len(self.features)+2)] for j in self.batch]
+        new_text = self.batch
+        features = [[0 for i in range(len(self.features) + 2)] for j in self.batch]
         vocab = []
         regex = cfg.regex
         regex = re.compile(regex)
         for j in range(len(self.batch)):
-            if j % 1000 == 0:
-                print(j, str(round(j*100/len(self.batch))) + '%')
             for i in range(len(self.features)):
-                list = self.batch[j][0]
+                list = self.batch[j]
                 features[j][i] = list.count(self.features[i])
-            features[j][-1] = len(regex.findall(self.batch[j][0]))
-            print(regex.findall(self.batch[j][0]))
-            for i in self.signs:
+            features[j][-1] = len(regex.findall(self.batch[j]))
+            for i in self.signs + self.digit:
                 new_text[j] = new_text[j].replace(i, '')
                 new_text[j] = self.del2spaces(new_text[j])
             new_text[j] = stemmer(new_text[j])
             new_text[j] = ' '.join([i for i in new_text[j].split(' ') if i not in self.stop_list])
-            features[j][-2] = len(new_text[j])
+            features[j][-2] = len(new_text[j].split(' '))
             vocab = [i for i in new_text[j].split(' ') if i not in vocab and i != '' and len(i) > 1]
             new_text[j] = [new_text[j]]
         feat = copy.deepcopy(self.features)
@@ -120,16 +115,16 @@ def lemma(sentence):
         sentence.pop(-1)
     sentence = ''.join(sentence)
     end = time.time()
-    print(end-start)
+    print(end - start)
     return sentence
 
 
 def stemmer(sent):
-    #start = time.time()
+    # start = time.time()
     stem = SnowballStemmer('russian')
     sent = stem.stem(sent)
-    #end = time.time()
-    #print(end-start)
+    # end = time.time()
+    # print(end-start)
     return sent
 
 
@@ -169,4 +164,4 @@ class FeatureGenerator():
             df_corr.remove(a)
         df = df.drop([i for i in cfg.gen_letters if i not in maxs[:][0]], axis=1)
         return df
-    #def re_corr(self, regexp):
+    # def re_corr(self, regexp):

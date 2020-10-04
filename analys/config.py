@@ -33,11 +33,11 @@ Cfg.w2vec_averager = 'mean' # ['mean', 'tf_idf']
 # ------------TextFilter-----------------------
 Cfg.filt_stopwords = stopwords.words('russian')
 Cfg.filt_form = ' {} '
-Cfg.regex = '^[0-9]*[.,]?[0-9]+$'
+Cfg.regex = '\s+\d*[.,]?\d+\s+'
 
 # ------------TextFilter-----------------------
 Cfg.data = pd.read_sql('SELECT * from reports', sqlite3.connect('C:/fish_reports/analys/reports.db'))
-Cfg.gen_signs = ['.', ':', ',', ';', '-', '?', '!', '(', ')']
+Cfg.gen_signs = ['.', ':', ',', ';', '-', '?', '!', '(', ')', '"', "'", '/', '\\']
 Cfg.gen_letters = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ь', 'ы', 'ъ', 'э', 'ю', 'я']
 Cfg.gen_numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 Cfg.features = ['ь', 'й', 'т', 'к', 'а', '.', ',', ':', '-']
