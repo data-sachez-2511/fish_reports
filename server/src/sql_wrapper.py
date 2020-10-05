@@ -146,12 +146,14 @@ class SqlWrapper(object):
                 f'DELETE FROM "{self.table}" WHERE "{self.pk}" - 1 BETWEEN {start} AND {stop - 1} AND ("{self.pk}" - 1) % {step} = {start % step}')
         else:
             raise TypeError
+        if isinstance(idx, int):
+            start = idx
         ids = [list(row) for row in self.curs.execute(
             f'SELECT "{self.pk}" FROM "{self.table}" WHERE "{self.pk}" - 1 > {start}').fetchall()]
         for i in enumerate(ids):
-            ids[i[0]].append(i[0] + start)
+            ids[i[0]].append(i[0] + start + 1)
         ids = [[id2, id1] for id1, id2 in ids]
-        self.curs.executemany(f'UPDATE "{self.table}" SET "{self.pk}" = ? + 1 WHERE "{self.pk}" = ?', ids)
+        self.curs.executemany(f'UPDATE "{self.table}" SET "{self.pk}" = ? WHERE "{self.pk}" = ?', ids)
         self._len = self.curs.rowcount
         self._update_sequence()
 
