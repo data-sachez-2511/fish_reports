@@ -81,7 +81,9 @@ class SqlWrapper(object):
             raise TypeError
 
     def __setitem__(self, idx, row):
-        """Update table row to passed dictionary by index.
+        """Update table row to passed dictionary, list or tuple by index.
+
+            When passing list or tuple columns are inserted in the same order as in the database.
 
             Raises TypeError if idx is not an integer,
             if row is not a dictionary,
@@ -92,15 +94,22 @@ class SqlWrapper(object):
         if self.__len__() == 0:
             return
         if isinstance(idx, int):
-            if isinstance(row, dict):
+            if isinstance(row, dict) or isinstance(row, list) or isinstance(row, tuple):
                 if idx >= self.__len__() or idx < -self.__len__():
                     raise IndexError
                 if -self.__len__() <= idx < 0:
                     idx += self.__len__()
                 res_row = {}
-                for i in range(len(list(row))):
-                    res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+                if isinstance(row, dict):
+                    for i in range(len(row)):
+                        res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+                else:
+                    column_names = [c[0] for c in self.get_table_columns(self.table)]
+                    for i in range(len(row)):
+                        res_row.update({column_names[i]: row[i]})
                 row = res_row
+                if self.pk in list(row):
+                    del row[self.pk]
                 self.curs.execute(
                     f'UPDATE "{self.table}" SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE "{self.pk}" - 1 = {idx}', [i for i in row.values()])
             else:
@@ -178,6 +187,56 @@ class SqlWrapper(object):
 
         self.conn.commit()
 
+    def get_table_columns(self, table_name):
+        """Get columns info of specified table."""
+
+        result = []
+        columns = self.curs.execute(f'SELECT sql FROM sqlite_master WHERE type = "table" AND tbl_name = ?', (table_name,)).fetchone()
+        if columns is None:
+            return None
+        columns = columns[0].split('(', 1)[1].rsplit(')', 1)[0].split(',')
+        columns = [i.strip() for i in columns]
+        for i1 in range(len(columns)):
+            c = columns[i1]
+            if c.split('(')[0].upper() == 'PRIMARY KEY':
+                result = [(lambda col: [col[0], col[1], col[2], col[3], True, col[5]] if col[0] == c.split('(')[1].split(')')[0][1:-1] else col)(col) for col in result]
+                continue
+            c = columns[i1].split()
+            result.append(['', '', False, False, False, None])
+            for i2 in range(len(c)):
+                attr = c[i2]
+                if i2 == 0:
+                    if attr.find('"') != -1:
+                        result[i1][0] = attr[1:-1]
+                    else:
+                        result[i1][0] = attr
+                elif i2 == 1:
+                    result[i1][1] = attr.upper()
+                else:
+                    if attr.upper() == 'NOT' and c[i2 + 1].upper() == 'NULL':
+                        result[i1][2] = True
+                    elif attr.upper() == 'UNIQUE':
+                        result[i1][3] = True
+                    elif attr.upper() == 'PRIMARY' and c[i2 + 1].upper() == 'KEY':
+                        result[i1][4] = True
+                    elif i2 == len(c) - 1 and c[i2 - 1].upper() == 'DEFAULT':
+                        if attr.upper() == 'NULL':
+                            result[i1][5] = None
+                        elif attr.find('"') != -1:
+                            result[i1][5] = attr[1:-1]
+                        elif attr.upper() == 'TRUE':
+                            result[i1][5] = 1
+                        elif attr.upper() == 'FALSE':
+                            result[i1][5] = 0
+                        else:
+                            try:
+                                float(attr)
+                            except ValueError:
+                                result[i1][5] = attr
+                            else:
+                                result[i1][5] = float(attr)
+        return [tuple(c) for c in result]
+
     def set_table(self, table_name, pk):
         """Set table and primary key. Set self._len if in 'fast mode'."""
 
@@ -187,20 +246,27 @@ class SqlWrapper(object):
             self._len = self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
     def append(self, row):
-        """Insert row into table.
+        """Insert row into table from passed dictionary, list or tuple.
+
+            When passing list or tuple columns are inserted in the same order as in the database.
 
             Raises TypeError if row is not a dictionary,
             ValueError if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None:
             raise ValueError
-        if isinstance(row, dict):
+        if isinstance(row, dict) or isinstance(row, list) or isinstance(row, tuple):
+            res_row = {}
+            if isinstance(row, dict):
+                for i in range(len(row)):
+                    res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+            else:
+                column_names = [c[0] for c in self.get_table_columns(self.table)]
+                for i in range(len(row)):
+                    res_row.update({column_names[i]: row[i]})
+            row = res_row
             if self.pk in list(row):
                 del row[self.pk]
-            res_row = {}
-            for i in range(len(list(row))):
-                res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
-            row = res_row
             self.curs.execute(
                 f'INSERT INTO "{self.table}" ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?"] * len(row))})', [i for i in row.values()])
         else:
