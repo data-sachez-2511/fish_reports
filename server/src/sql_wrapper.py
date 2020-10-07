@@ -309,11 +309,11 @@ class SqlWrapper(object):
         if isinstance(idx, int):
             row = self.__getitem__(idx)
             self.__delitem__(idx)
+            self._len -= 1
+            self._update_sequence()
             return row
         else:
             raise TypeError
-        self._len -= 1
-        self._update_sequence()
 
     def remove(self, row):
         """Remove first occurrence of row.
