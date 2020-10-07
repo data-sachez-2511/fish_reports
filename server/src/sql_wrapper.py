@@ -159,12 +159,8 @@ class SqlWrapper(object):
             raise TypeError
         if isinstance(idx, int):
             start = idx
-        ids = [list(row) for row in self.curs.execute(
-            f'SELECT "{self.pk}" FROM "{self.table}" WHERE "{self.pk}" - 1 > {start}').fetchall()]
-        for i in enumerate(ids):
-            ids[i[0]].append(i[0] + start + 1)
-        ids = [[id2, id1] for id1, id2 in ids]
-        self.curs.executemany(f'UPDATE "{self.table}" SET "{self.pk}" = ? WHERE "{self.pk}" = ?', ids)
+        self.curs.execute(
+            f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
         self._len = self.curs.rowcount
         self._update_sequence()
 
@@ -182,7 +178,10 @@ class SqlWrapper(object):
     def _update_sequence(self):
         """Update 'sqlite_sequence' to sync table's primary key to its length."""
 
-        self.curs.execute('UPDATE sqlite_sequence SET seq = ? WHERE name = ?', (self._len, self.table))
+        try:
+            self.curs.execute('UPDATE sqlite_sequence SET seq = ? WHERE name = ?', (self._len, self.table))
+        except sqlite3.OperationalError:
+            pass
 
     def commit(self):
         """Commit the current transaction."""
