@@ -19,6 +19,8 @@ class SqlWrapper(object):
         self.table = None
         self.pk = None
         self.store_len = store_len
+        self.columns = ()
+        self.column_names = ()
         self._len = 0
 
     def __del__(self):
@@ -40,7 +42,7 @@ class SqlWrapper(object):
             return self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
     def __getitem__(self, idx):
-        """Return tuple or list of tuples containing row data from the table, by index or slice.
+        """Return row tuple or tuple containing row tuples selected from the table, by index or slice.
 
             Raises IndexError if idx is out of range,
             TypeError if idx is not an integer, slice or iterable,
@@ -71,9 +73,9 @@ class SqlWrapper(object):
                 stop += self.__len__()
             if start >= stop:
                 return []
-            return self.curs.execute(
+            return tuple(self.curs.execute(
                 f'SELECT * FROM "{self.table}" WHERE "{self.pk}" - 1 BETWEEN {start} AND {stop - 1}'
-            ).fetchall()[::idx.step]
+            ).fetchall()[::idx.step])
         elif isinstance(idx, Iterable):
             rows = ['"' + i.strip() + '"' for i in idx if i.strip()]
             return self.curs.execute(f'SELECT {", ".join(rows)} FROM "{self.table}"').fetchall()
@@ -104,9 +106,9 @@ class SqlWrapper(object):
                     for i in range(len(row)):
                         res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
                 else:
-                    column_names = [c[0] for c in self.get_table_columns(self.table)]
+
                     for i in range(len(row)):
-                        res_row.update({column_names[i]: row[i]})
+                        res_row.update({self.column_names[i]: row[i]})
                 row = res_row
                 if self.pk in list(row):
                     del row[self.pk]
@@ -183,9 +185,14 @@ class SqlWrapper(object):
         self.curs.execute('UPDATE sqlite_sequence SET seq = ? WHERE name = ?', (self._len, self.table))
 
     def commit(self):
-        """Commit changes."""
+        """Commit the current transaction."""
 
         self.conn.commit()
+
+    def rollback(self):
+        """Roll back any changes to the database since the last call to commit()."""
+
+        self.conn.rollback()
 
     def get_table_columns(self, table_name):
         """Get columns info of specified table."""
@@ -235,13 +242,15 @@ class SqlWrapper(object):
                                 result[i1][5] = attr
                             else:
                                 result[i1][5] = float(attr)
-        return [tuple(c) for c in result]
+        return tuple([tuple(c) for c in result])
 
     def set_table(self, table_name, pk):
         """Set table and primary key. Set self._len if in 'fast mode'."""
 
         self.table = table_name
         self.pk = pk
+        self.columns = self.get_table_columns(self.table)
+        self.column_names = tuple([c[0] for c in self.columns])
         if self.store_len:
             self._len = self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
@@ -261,9 +270,8 @@ class SqlWrapper(object):
                 for i in range(len(row)):
                     res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
             else:
-                column_names = [c[0] for c in self.get_table_columns(self.table)]
                 for i in range(len(row)):
-                    res_row.update({column_names[i]: row[i]})
+                    res_row.update({self.column_names[i]: row[i]})
             row = res_row
             if self.pk in list(row):
                 del row[self.pk]
