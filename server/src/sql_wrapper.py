@@ -57,7 +57,7 @@ class SqlWrapper(object):
                 raise IndexError
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
-            return self.curs.execute(f'SELECT * FROM "{self.table}" WHERE "{self.pk}" - 1 = {idx}').fetchone()
+            return self.curs.execute(f'SELECT * FROM "{self.table}" WHERE "{self.pk}" = {idx + 1}').fetchone()
         elif isinstance(idx, slice):
             start = idx.start
             stop = idx.stop
