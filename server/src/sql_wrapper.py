@@ -57,7 +57,7 @@ class SqlWrapper(object):
                 raise IndexError
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
-            return self.curs.execute(f'SELECT * FROM "{self.table}" WHERE "{self.pk}" - 1 = {idx}').fetchone()
+            return self.curs.execute(f'SELECT * FROM "{self.table}" WHERE "{self.pk}" = {idx + 1}').fetchone()
         elif isinstance(idx, slice):
             start = idx.start
             stop = idx.stop
@@ -74,7 +74,7 @@ class SqlWrapper(object):
             if start >= stop:
                 return []
             return self.curs.execute(
-                f'SELECT * FROM "{self.table}" WHERE "{self.pk}" - 1 BETWEEN {start} AND {stop - 1}'
+                f'SELECT * FROM "{self.table}" WHERE "{self.pk}" BETWEEN {start + 1} AND {stop}'
             ).fetchall()[::idx.step]
         elif isinstance(idx, Iterable):
             rows = ['"' + i.strip() + '"' for i in idx if i.strip()]
@@ -113,7 +113,7 @@ class SqlWrapper(object):
                 if self.pk in list(row):
                     del row[self.pk]
                 self.curs.execute(
-                    f'UPDATE "{self.table}" SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE "{self.pk}" - 1 = {idx}', [i for i in row.values()])
+                    f'UPDATE "{self.table}" SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE "{self.pk}" = {idx + 1}', [i for i in row.values()])
             else:
                 raise TypeError
         else:
@@ -137,7 +137,7 @@ class SqlWrapper(object):
                 raise IndexError
             if -self.__len__() <= idx < 0:
                 idx += self.__len__()
-            self.curs.execute(f'DELETE FROM "{self.table}" WHERE "{self.pk}" - 1 = {idx}')
+            self.curs.execute(f'DELETE FROM "{self.table}" WHERE "{self.pk}" = {idx + 1}')
         elif isinstance(idx, slice):
             if idx.start is not None:
                 start = idx.start
@@ -355,6 +355,8 @@ class SqlWrapper(object):
         if isinstance(start, int):
             if isinstance(stop, int):
                 if isinstance(row, dict):
+                    if start >= stop:
+                        raise ValueError
                     if self.pk in list(row):
                         del row[self.pk]
                     res_row = {}
@@ -362,7 +364,7 @@ class SqlWrapper(object):
                         res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
                     row = res_row
                     index = self.curs.execute(
-                        f'SELECT "{self.pk}" FROM "{self.table}" WHERE {" AND ".join([list(row)[i] + " " + (lambda v: "IS" if v is None else "=")(list(row.values())[i]) + " ?" for i in range(len(row))])} AND "{self.pk}" BETWEEN {start} AND {stop - 1} LIMIT 1', [i for i in row.values()]).fetchone()
+                        f'SELECT "{self.pk}" FROM "{self.table}" WHERE {" AND ".join([list(row)[i] + " " + (lambda v: "IS" if v is None else "=")(list(row.values())[i]) + " ?" for i in range(len(row))])} AND "{self.pk}" BETWEEN {start + 1} AND {stop} LIMIT 1', [i for i in row.values()]).fetchone()
                     if index:
                         return index[0] - 1
                     else:
