@@ -42,7 +42,7 @@ class SqlWrapper(object):
             return self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
     def __getitem__(self, idx):
-        """Return row tuple or tuple containing row tuples selected from the table, by index or slice.
+        """Return row tuple or list containing row tuples selected from the table, by index or slice.
 
             Raises IndexError if idx is out of range,
             TypeError if idx is not an integer, slice or iterable,
@@ -73,9 +73,9 @@ class SqlWrapper(object):
                 stop += self.__len__()
             if start >= stop:
                 return []
-            return tuple(self.curs.execute(
+            return self.curs.execute(
                 f'SELECT * FROM "{self.table}" WHERE "{self.pk}" - 1 BETWEEN {start} AND {stop - 1}'
-            ).fetchall()[::idx.step])
+            ).fetchall()[::idx.step]
         elif isinstance(idx, Iterable):
             rows = ['"' + i.strip() + '"' for i in idx if i.strip()]
             return self.curs.execute(f'SELECT {", ".join(rows)} FROM "{self.table}"').fetchall()
@@ -195,7 +195,7 @@ class SqlWrapper(object):
         self.conn.rollback()
 
     def get_table_columns(self, table_name):
-        """Get columns info of specified table."""
+        """Get columns info of the specified table."""
 
         result = []
         columns = self.curs.execute(f'SELECT sql FROM sqlite_master WHERE type = "table" AND tbl_name = ?', (table_name,)).fetchone()
@@ -242,7 +242,7 @@ class SqlWrapper(object):
                                 result[i1][5] = attr
                             else:
                                 result[i1][5] = float(attr)
-        return tuple([tuple(c) for c in result])
+        return result
 
     def set_table(self, table_name, pk):
         """Set table and primary key. Set self._len if in 'fast mode'."""
@@ -250,7 +250,7 @@ class SqlWrapper(object):
         self.table = table_name
         self.pk = pk
         self.columns = self.get_table_columns(self.table)
-        self.column_names = tuple([c[0] for c in self.columns])
+        self.column_names = [c[0] for c in self.columns]
         if self.store_len:
             self._len = self.curs.execute(f'SELECT COUNT("{self.pk}") FROM "{self.table}"').fetchone()[0]
 
