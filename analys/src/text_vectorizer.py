@@ -109,3 +109,21 @@ class MyWord2Vec():
                         vectors_batch[i] = 0
         vectors_batch = [[np.mean(sentence)] for sentence in vectors_batch]
         return vectors_batch
+
+
+class Vectorizer:
+    def __init__(self):
+        if cfg.vectorizer_type == 'bag_of_words'
+            self.vectorizer = BagsOfTheWords(...)
+        elif:
+            ...
+        else:
+            ...
+
+    def __call__(self, texts):
+        '''
+        Vectorizing texts
+        :param texts: list of string
+        :return: list of np.array
+        '''
+        ...
