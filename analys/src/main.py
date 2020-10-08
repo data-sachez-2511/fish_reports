@@ -19,7 +19,7 @@ def preparing(file_path, table_name, column_name, batch_size, file_names, vec_ty
 
     len_ = len(db)
     for i in range(0, len_, batch_size):
-        if i % 500 == 0:
+        if i % 2560 == 0:
             print('Progress - {}, processed - {}'.format(str(round((i*100)/len_, 2)) + '%', i))
 
         data = [t[column_name] for t in db[i:i + batch_size]]
@@ -27,7 +27,7 @@ def preparing(file_path, table_name, column_name, batch_size, file_names, vec_ty
         f = TextFilter(data)
         text, names, features, vocab_batch = f.classic_filter()
 
-        with open(file_names['vectors'], 'a', encoding='utf-8') as file:
+        with open(file_names['features'], 'a', encoding='utf-8') as file:
             if i == 0:
                 for name in names[0:-1]:
                     file.write(name + ';')
@@ -55,7 +55,7 @@ def preparing(file_path, table_name, column_name, batch_size, file_names, vec_ty
 
 
     for i in range(0, len_, batch_size):
-        if i % 500 == 0:
+        if i % 2560 == 0:
             print('Progress_v - {}, processed_v - {}'.format(str(round((i * 100) / len_, 2)) + '%', i))
 
         data = [t[column_name] for t in db[i:i + batch_size]]
@@ -76,10 +76,14 @@ def preparing(file_path, table_name, column_name, batch_size, file_names, vec_ty
                 file.write(vocab[-1] + '\n')
             l = len(vectors_batch[0])
             for vectors in vectors_batch:
-                for v in range(0, l-1, 512):
-                    file.write(str(vectors[v:v + 512].tolist())[1:-1].replace(', ', ';') + ';')
+                for v in range(0, l, 512):
+                    if v + 512 < l:
+                        file.write(str(vectors[v:v + 512].tolist())[1:-1].replace(', ', ';') + ';')
+                    else:
+                        file.write(str(vectors[v:v + 512].tolist())[1:-1].replace(', ', ';'))
 
 file_path = 'C:/fish_reports/analys/reports.db'
 t = time()
 preparing(file_path, 'reports', 5, 512, {'vocab': 'vocab.txt', 'features': 'features.txt', 'vectors': 'vectors.txt'})
 print(time()-t)
+print((time()-t)/565672)
