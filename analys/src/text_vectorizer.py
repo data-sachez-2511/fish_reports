@@ -30,7 +30,7 @@ class BagsOfTheWords():
         :param batch: list of strings size of N - batch size
         :return: numpy array size of [N x vocab_size]
         '''
-        return self.vectorizer.transform(batch).toarray()
+        return self.vectorizer.transform([i[0] for i in batch]).toarray()
 
 
 class TdIdf():
@@ -56,12 +56,12 @@ class TdIdf():
         :param batch: list of strings size of N - batch size
         :return: numpy array size of [N x vocab_size]
         '''
-        return self.vectorizer.transform(batch).toarray()
+        return self.vectorizer.transform([i[0] for i in batch]).toarray()
 
 
 class MyWord2Vec():
-    def __init__(self):
-        self.stop_list = stopwords.words('russian')
+    def __init__(self, vocab):
+        self.vocab = vocab
         self.vectorizer = Word2Vec(min_count=cfg.w2vec_min_count,
                                    size=cfg.w2vec_size,
                                    alpha=cfg.w2vec_alpha,
@@ -77,15 +77,15 @@ class MyWord2Vec():
     def load(self):
         self.vectorizer = Word2Vec.load(cfg.vectorizer_path)
 
-    def build_vocab(self, vocab):
-        self.vectorizer.build_vocab(vocab)
+    def build_vocab(self):
+        self.vectorizer.build_vocab(self.vocab)
 
     def fit(self, batch):
         '''
         :param batch: list of strings size of N - batch size
         :return: None
         '''
-        words_batch = [_[0].split(' ') for _ in batch]
+        words_batch = [_.split(' ') for _ in batch if _ in self.vocab]
         self.vectorizer.train(words_batch, total_examples=(len(batch)), epochs=cfg.w2vec_epochs)
 
     def transform(self, batch):
@@ -93,7 +93,7 @@ class MyWord2Vec():
         :param batch: list of strings size of N - batch size
         :return: numpy array size of [N x vocab_size]
         '''
-        words_batch = [_[0].split(' ') for _ in batch]
+        words_batch = [_.split(' ') for _ in batch]
         vectors_batch = []
         if self.averager == 'mean':
             vectors_batch = [[self.vectorizer.wv[word] for word in sentence] for sentence in words_batch]

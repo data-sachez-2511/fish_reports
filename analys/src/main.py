@@ -1,60 +1,85 @@
 from server.sql_wrapper import SqlWrapper
 from analys.src.text_handler import TextFilter
 from analys.src.text_vectorizer import BagsOfTheWords, TdIdf, MyWord2Vec
-import numpy as np
-import sqlite3
 from time import time
 
 from analys.config import Cfg as cfg
 
 
-def preparing(file_path, batch_size, vec_type=cfg.w2vec_averager):
-    with open('vocab.txt', 'w') as f:
+def preparing(file_path, table_name, column_name, batch_size, file_names, vec_type=cfg.vectorizer):
+    with open(file_names['vocab'], 'w', encoding='utf-8') as f:
+        pass
+    with open(file_names['features'], 'w', encoding='utf-8') as file:
+        pass
+    with open(file_names['vectors'], 'w', encoding='utf-8') as vec_file:
         pass
 
-    db = SqlWrapper(file_path)
-    db_pre = SqlWrapper(file_path)
-    db_pre.set_table('pre_reports', 'id')
-    db.set_table('reports', 'id')
+    db = SqlWrapper(file_path, True)
+    db.set_table(table_name, 'id')
 
-    for i in range(0, len(db), batch_size):
+    len_ = len(db)
+    for i in range(0, len_, batch_size):
         if i % 500 == 0:
-            print('Progress - {}, processed - {}'.format(str(round((i*100)/len(db), 2)) + '%', i))
+            print('Progress - {}, processed - {}'.format(str(round((i*100)/len_, 2)) + '%', i))
 
-        data = [t[5] for t in db[i:i + batch_size]]
+        data = [t[column_name] for t in db[i:i + batch_size]]
 
         f = TextFilter(data)
         text, names, features, vocab_batch = f.classic_filter()
 
-        if i == -1:
-            for name in names:
-                db_pre.add_column(name, 'INTEGER')
+        with open(file_names['vectors'], 'a', encoding='utf-8') as file:
+            if i == 0:
+                for name in names[0:-1]:
+                    file.write(name + ';')
+                file.write(names[-1] + '\n')
 
-        db_pre.extend([{names[q]: features[w][q] for q in range(len(names))} for w in range(len(features))])
-        db.commit()
+            for feature in features:
+                for fx in feature[0:-1]:
+                    file.write(str(fx) + ';')
+                file.write(str(feature[-1]) + '\n')
 
-        with open('vocab.txt', 'a') as f:
+        with open(file_names['vocab'], 'a', encoding='utf-8') as f:
             for j in vocab_batch:
                 f.write(str(j) + ';')
 
-    with open('vocab.txt', 'r') as f:
-        vocab = f.read().split(';')
+    with open(file_names['vocab'], 'r', encoding='utf-8') as f:
+        vocab = set(f.read().split(';')[0:-1])
 
-    vec = BagsOfTheWords()
-    vec.fit(vocab)
-    vocab = list(vec.vectorizer.vocabulary_.keys())
+    if vec_type == 'word2vec':
+        vec = MyWord2Vec(vocab)
+        vec.build_vocab()
+    else:
+        vec = BagsOfTheWords() if vec_type == 'bags' else TdIdf()
+        vec.fit(vocab)
+        vocab = list(vec.vectorizer.vocabulary_.keys())
 
-    for name in vocab:
-        db_pre.add_column(name, 'INTEGER')
-    db_pre.commit()
-    for i in range(0, len(db), batch_size):
-        print(i)
 
-        data = [t[5] for t in db[i:i + batch_size]]
-        vectors_batch = vec.transform(data)
+    for i in range(0, len_, batch_size):
+        if i % 500 == 0:
+            print('Progress_v - {}, processed_v - {}'.format(str(round((i * 100) / len_, 2)) + '%', i))
 
-        db_pre.extend([{vocab[q]: vectors_batch[w][q] for q in range(len(vocab))} for w in range(len(vectors_batch))])
-        db_pre.commit()
+        data = [t[column_name] for t in db[i:i + batch_size]]
+
+        f = TextFilter(data)
+        data, names, features, vocab_batch = f.classic_filter()
+
+        if vec_type == 'word2vec':
+            vec.fit(data)
+            vectors_batch = vec.transform(data)
+        else:
+            vectors_batch = vec.transform(data)
+
+        with open(file_names['vectors'], 'a', encoding='utf-8') as file:
+            if i == 0:
+                for word in vocab[0:-1]:
+                    file.write(word + ';')
+                file.write(vocab[-1] + '\n')
+            l = len(vectors_batch[0])
+            for vectors in vectors_batch:
+                for v in range(0, l-1, 512):
+                    file.write(str(vectors[v:v + 512].tolist())[1:-1].replace(', ', ';') + ';')
 
 file_path = 'C:/fish_reports/analys/reports.db'
-preparing(file_path, 100)
+t = time()
+preparing(file_path, 'reports', 5, 512, {'vocab': 'vocab.txt', 'features': 'features.txt', 'vectors': 'vectors.txt'})
+print(time()-t)
