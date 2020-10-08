@@ -106,12 +106,11 @@ class SqlWrapper(object):
                     for i in range(len(row)):
                         res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
                 else:
-
                     for i in range(len(row)):
-                        res_row.update({self.column_names[i]: row[i]})
+                        res_row.update({'"' + self.column_names[i] + '"': row[i]})
                 row = res_row
-                if self.pk in list(row):
-                    del row[self.pk]
+                if '"' + self.pk + '"' in list(row):
+                    del row['"' + self.pk + '"']
                 self.curs.execute(
                     f'UPDATE "{self.table}" SET {", ".join([f"{list(row)[i]} = ?" for i in range(len(row))])} WHERE "{self.pk}" = {idx + 1}', [i for i in row.values()])
             else:
@@ -130,7 +129,7 @@ class SqlWrapper(object):
         if self.__len__() == 0:
             return
         start = 0
-        stop = self.__len__() - 1
+        stop = self.__len__()
         step = 1
         if isinstance(idx, int):
             if idx >= self.__len__() or idx < -self.__len__():
@@ -159,8 +158,9 @@ class SqlWrapper(object):
             raise TypeError
         if isinstance(idx, int):
             start = idx
+        print(f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - {start} - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
         self.curs.execute(
-            f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
+            f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - {start} - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
         self._len = self.curs.rowcount
         self._update_sequence()
 
@@ -270,10 +270,10 @@ class SqlWrapper(object):
                     res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
             else:
                 for i in range(len(row)):
-                    res_row.update({self.column_names[i]: row[i]})
+                    res_row.update({'"' + self.column_names[i] + '"': row[i]})
             row = res_row
-            if self.pk in list(row):
-                del row[self.pk]
+            if '"' + self.pk + '"' in list(row):
+                del row['"' + self.pk + '"']
             self.curs.execute(
                 f'INSERT INTO "{self.table}" ({", ".join([str(list(row)[i]) for i in range(len(row))])}) VALUES ({", ".join(["?"] * len(row))})', [i for i in row.values()])
         else:
@@ -293,7 +293,7 @@ class SqlWrapper(object):
             raise TypeError
         rows = list(rows)
         for row in rows:
-            if not isinstance(row, dict):
+            if not isinstance(row, dict) and not isinstance(row, list) and not isinstance(row, tuple):
                 raise TypeError
             self.append(row)
 
