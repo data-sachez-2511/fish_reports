@@ -158,7 +158,6 @@ class SqlWrapper(object):
             raise TypeError
         if isinstance(idx, int):
             start = idx
-        print(f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - {start} - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
         self.curs.execute(
             f'UPDATE "{self.table}" SET "{self.pk}" = "{self.pk}" - ("{self.pk}" - ("{self.pk}" > {stop}) * ("{self.pk}" - {stop}) - {start} - 1) / {step} - 1 WHERE "{self.pk}" > {start}')
         self._len = self.curs.rowcount
@@ -259,9 +258,10 @@ class SqlWrapper(object):
             When passing list or tuple columns are inserted in the same order as in the database.
 
             Raises TypeError if row is not a dictionary,
-            ValueError if self.table or self.pk is None."""
+            ValueError if self.table or self.pk is None,
+            if row iterable is empty."""
 
-        if self.table is None or self.pk is None:
+        if self.table is None or self.pk is None or not row:
             raise ValueError
         if isinstance(row, dict) or isinstance(row, list) or isinstance(row, tuple):
             res_row = {}
@@ -319,16 +319,21 @@ class SqlWrapper(object):
 
             Raises TypeError if row is not a dictionary,
             ValueError if row is not present,
-            if self.table or self.pk is None."""
+            if self.table or self.pk is None,
+            if row iterable is empty."""
 
-        if self.table is None or self.pk is None:
+        if self.table is None or self.pk is None or not row:
             raise ValueError
-        if isinstance(row, dict):
-            if self.pk in list(row):
-                del row[self.pk]
+        if isinstance(row, dict) or isinstance(row, list) or isinstance(row, tuple):
             res_row = {}
-            for i in range(len(list(row))):
-                res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+            if isinstance(row, dict):
+                for i in range(len(row)):
+                    res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+            else:
+                for i in range(len(row)):
+                    res_row.update({'"' + self.column_names[i] + '"': row[i]})
+            if '"' + self.pk + '"' in list(res_row):
+                del res_row['"' + self.pk + '"']
             row = res_row
             index = self.curs.execute(f'SELECT "{self.pk}" FROM "{self.table}" WHERE {" AND ".join([list(row)[i] + " " + (lambda v: "IS" if v is None else "=")(list(row.values())[i]) + " ?" for i in range(len(row))])} ORDER BY "{self.pk}" ASC LIMIT 1', [i for i in row.values()]).fetchone()
             if index:
@@ -347,20 +352,25 @@ class SqlWrapper(object):
 
             Raises TypeError if row is not a dictionary,
             start or stop are not integers,
-            ValueError if self.table or self.pk is None."""
+            ValueError if self.table or self.pk is None,
+            if row iterable is empty."""
 
-        if self.table is None or self.pk is None:
+        if self.table is None or self.pk is None or not row:
             raise ValueError
         if isinstance(start, int):
             if isinstance(stop, int):
-                if isinstance(row, dict):
+                if isinstance(row, dict) or isinstance(row, list) or isinstance(row, tuple):
                     if start >= stop:
                         raise ValueError
-                    if self.pk in list(row):
-                        del row[self.pk]
                     res_row = {}
-                    for i in range(len(list(row))):
-                        res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+                    if isinstance(row, dict):
+                        for i in range(len(row)):
+                            res_row.update({'"' + list(row)[i] + '"': list(row.values())[i]})
+                    else:
+                        for i in range(len(row)):
+                            res_row.update({'"' + self.column_names[i] + '"': row[i]})
+                    if '"' + self.pk + '"' in list(res_row):
+                        del res_row['"' + self.pk + '"']
                     row = res_row
                     index = self.curs.execute(
                         f'SELECT "{self.pk}" FROM "{self.table}" WHERE {" AND ".join([list(row)[i] + " " + (lambda v: "IS" if v is None else "=")(list(row.values())[i]) + " ?" for i in range(len(row))])} AND "{self.pk}" BETWEEN {start + 1} AND {stop} LIMIT 1', [i for i in row.values()]).fetchone()
@@ -382,9 +392,10 @@ class SqlWrapper(object):
         Raises ValueError if table_name or column_name is not a string,
         if not_null, unique, primary_key are not booleans,
         if default isn't string True, False, None or number,
-        if self.table or self.pk is None."""
+        if self.table or self.pk is None,
+        if columns iterable is empty."""
 
-        if not isinstance(table_name, str):
+        if not isinstance(table_name, str) or not columns:
             raise ValueError
         for i in range(len(columns)):
             columns[i].extend([False] * max(5 - len(columns[i]), 0) + [None] * (len(columns[i]) != 6))
@@ -409,7 +420,7 @@ class SqlWrapper(object):
                 columns[i][5] = 'NULL'
             elif not isinstance(default, int) and not isinstance(default, float):
                 raise ValueError
-        self.curs.execute(f'CREATE TABLE {table_name} (' + ", ".join([f'"{c[0]}" {c[1]}{" NOT NULL" * c[2]}{" UNIQUE" * c[3]}{" PRIMARY KEY" * c[4]} DEFAULT {c[5]}' for c in columns]) + ')')
+        self.curs.execute(f'CREATE TABLE {table_name} (' + ", ".join([f'"{c[0]}" {c[1]}{" NOT NULL" * c[2]}{" UNIQUE" * c[3]}{" PRIMARY KEY" * c[4]} DEFAULT {c[5]}' for c in columns]) + ")")
 
     def drop_table(self, table_name):
         """Drop specified table."""
