@@ -420,7 +420,7 @@ class SqlWrapper(object):
                 columns[i][5] = 'NULL'
             elif not isinstance(default, int) and not isinstance(default, float):
                 raise ValueError
-        self.curs.execute(f'CREATE TABLE {table_name} (' + ", ".join([f'"{c[0]}" {c[1]}{" NOT NULL" * c[2]}{" UNIQUE" * c[3]}{" PRIMARY KEY" * c[4]} DEFAULT {c[5]}' for c in columns]) + ")")
+        self.curs.execute(f'CREATE TABLE {table_name} (' + ", ".join([f'"{c[0]}" {c[1]}{" NOT NULL" * c[2]}{" UNIQUE" * c[3]}{" PRIMARY KEY" * c[4]} DEFAULT {c[5]}' for c in columns]) + ')')
 
     def drop_table(self, table_name):
         """Drop specified table."""
