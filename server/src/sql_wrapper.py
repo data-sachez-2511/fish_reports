@@ -4,8 +4,8 @@ from collections.abc import Iterable
 
 class SqlWrapper(object):
     """API for sqlite databases similar to built-in list.
-    This API is NOT suitable for multi-threading.
-    Using it with multi-threading may lead to errors and data loss, use that way at your own risk."""
+        This API is NOT suitable for multi-threading.
+        Using it with multi-threading may lead to errors and data loss, use that way at your own risk."""
 
     def __init__(self, filename, store_len):
         """Initialize self.
@@ -387,13 +387,13 @@ class SqlWrapper(object):
 
     def create_table(self, table_name, columns):
         """Create table with specified name and columns.
-        columns format: [[column_name, datatype, not_null, unique, primary_key, default], ...]
+            columns format: [[column_name, datatype, not_null, unique, primary_key, default], ...]
 
-        Raises ValueError if table_name or column_name is not a string,
-        if not_null, unique, primary_key are not booleans,
-        if default isn't string True, False, None or number,
-        if self.table or self.pk is None,
-        if columns iterable is empty."""
+            Raises ValueError if table_name or column_name is not a string,
+            if not_null, unique, primary_key are not booleans,
+            if default isn't string True, False, None or number,
+            if self.table or self.pk is None,
+            if columns iterable is empty."""
 
         if not isinstance(table_name, str) or not columns:
             raise ValueError
@@ -430,9 +430,9 @@ class SqlWrapper(object):
     def add_column(self, column_name, datatype, not_null=False, default=None):
         """Add column with specified name, datatype and constraints 'NOT NULL' and 'DEFAULT'.
 
-        Raises ValueError if datatype is not 'NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB' or 'NUMERIC',
-        if default isn't string True, False, None or number,
-        if self.table or self.pk is None."""
+            Raises ValueError if datatype is not 'NULL', 'INTEGER', 'REAL', 'TEXT', 'BLOB' or 'NUMERIC',
+            if default isn't string True, False, None or number,
+            if self.table or self.pk is None."""
 
         if self.table is None or self.pk is None or (not_null and default is None):
             raise ValueError
